@@ -136,7 +136,7 @@ data_files <- list.files("data_chunks", pattern = "chunk_.*csv", full.names = TR
 # e.g., 
 # if you want to load the first 10: data_files_to_load <- data_files[1:10]
 # if you want to load all at once: data_files_to_load <- data_files
-data_files_to_load <- data_files[11:12]
+data_files_to_load <- data_files[1:20]
 
 # Load the selected data file chunks.
 data_list <- map(data_files_to_load, read_csv) %>%
@@ -156,7 +156,7 @@ walk2(results_list, names(results_list), ~write_csv(.x, glue::glue("results_chun
 # Combine the results and write out as a single CSV ----
 # This can also be split up into chunks if it takes too much memory
 list.files("results_chunks", pattern = "chunk_.*csv", full.names = TRUE) %>%
-  map(read_csv) %>%
+  map(suppressMessages(read_csv)) %>%
   map(~mutate(., across(everything(), as.character))) %>%
   bind_rows() %>%
   write_csv("results/url_check_results.csv")
