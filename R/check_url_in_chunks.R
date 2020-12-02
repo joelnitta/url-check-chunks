@@ -1,7 +1,9 @@
+# Install packages the first time
 # install.packages("tidyverse")
 # install.packages("tictoc")
 # install.packages("furrr")
 # install.packages("glue")
+# install.packages("fs")
 
 # Load packages ----
 library(tidyverse)
@@ -119,7 +121,13 @@ write_chunked_data(full_data, base_name = "data_chunks/chunk", n_chunks = 20)
 # You may need repeat this step, adjusting the data chunks you choose each time
 # until all are finished.
 
+# Run this line to delete existing CSV files in "data_chunks" folder
+# (for example, if some are leftover from a previous run and you don't want to
+# mix them up)
+# fs::file_delete(list.files("data_chunks", pattern = ".*csv", full.names = TRUE))
+
 # First make a vector of all the CSV files in the "data_chunks" folder
+# (probably a good idea to make sure this folder is empty first!)
 data_files <- list.files("data_chunks", pattern = "chunk_.*csv", full.names = TRUE) %>%
   sort()
 
@@ -143,7 +151,7 @@ map(data_list,
   )) 
 
 # Write out the results in chunks
-map2(results_list, names(results_list), ~write_csv(.x, glue::glue("results_chunks/{.y}")))
+walk2(results_list, names(results_list), ~write_csv(.x, glue::glue("results_chunks/{.y}")))
 
 # Combine the results and write out as a single CSV ----
 # This can also be split up into chunks if it takes too much memory
