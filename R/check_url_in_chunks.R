@@ -113,7 +113,13 @@ plan(multisession)
 # Read in the full data file
 full_data <- read_csv("data/Sample_500.csv")
 
+# Run this line to delete existing CSV files in "data_chunks" folder
+# (for example, if some are leftover from a previous run and you don't want to
+# mix them up)
+# fs::file_delete(list.files("data_chunks", pattern = ".*csv", full.names = TRUE))
+
 # Split up the data file into chunks, save each to the "data_chunks" folder
+# (make sure this folder is empty first!)
 write_chunked_data(full_data, base_name = "data_chunks/chunk", n_chunks = 20)
 
 # Check URLs in chunks ----
@@ -121,13 +127,7 @@ write_chunked_data(full_data, base_name = "data_chunks/chunk", n_chunks = 20)
 # You may need repeat this step, adjusting the data chunks you choose each time
 # until all are finished.
 
-# Run this line to delete existing CSV files in "data_chunks" folder
-# (for example, if some are leftover from a previous run and you don't want to
-# mix them up)
-# fs::file_delete(list.files("data_chunks", pattern = ".*csv", full.names = TRUE))
-
 # First make a vector of all the CSV files in the "data_chunks" folder
-# (probably a good idea to make sure this folder is empty first!)
 data_files <- list.files("data_chunks", pattern = "chunk_.*csv", full.names = TRUE) %>%
   sort()
 
