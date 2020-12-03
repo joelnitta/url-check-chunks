@@ -105,8 +105,42 @@ write_chunked_data <- function (data, n_chunks = 11, base_name = "chunked_data",
   
 }
 
+#' Check URLs in a set of CSV files
+#'
+#' @param data_files_to_check Names of CSV data files (e.g., "chunk_01.csv")
+#' @param data_folder Path to the folder containing the CSV data files
+#' @param results_folder Path to write the results (each result is also a CSV file
+#' named, e.g., "chunk_01.csv", but it has the status of the URLs added as new columns)
+#'
+check_urls <- function (data_files_to_check, data_folder = "data_chunks", results_folder = "results_chunks") {
+  
+  # Set up progress bar
+  pb <- progress::progress_bar$new(format = "[:bar] :current/:total (:percent), eta: :eta", total = length(data_files_to_check))
+  
+  # Define function to read in data, check URL, and write out results for a single file
+  check_urls_in_chunk <- function(data_file, data_folder, results_folder) {
+    pb$tick()
+    # Load chunk
+    read_csv(fs::path(data_folder, data_file)) %>%
+      # Check the URL for each data chunk, in parallel
+      mutate(
+        dc.publisher.uri.status = future_map_chr(dc.publisher.uri, url_status),
+        dc.relation.uri.status = future_map_chr(dc.relation.uri, url_status)
+      ) %>%
+      # Write out the results in chunks
+      write_csv(., fs::path(results_folder, data_file))
+  }
+  
+  # Loop over input files, with progress bar
+  purrr::walk(data_files_to_check, ~check_urls_in_chunk(., data_folder = data_folder, results_folder = results_folder))
+  
+}
+
 # Set parallel backend ----
 plan(multisession)
+
+# Turn off readr messages when loading CSVs
+options(readr.num_columns = 0)
 
 # Split data ----
 
@@ -120,7 +154,7 @@ full_data <- read_csv("data/Sample_500.csv")
 
 # Split up the data file into chunks, save each to the "data_chunks" folder
 # (make sure this folder is empty first!)
-write_chunked_data(full_data, base_name = "data_chunks/chunk", n_chunks = 20)
+write_chunked_data(full_data, base_name = "data_chunks/chunk", n_chunks = 400)
 
 # Check URLs in chunks ----
 
@@ -128,7 +162,7 @@ write_chunked_data(full_data, base_name = "data_chunks/chunk", n_chunks = 20)
 # until all are finished.
 
 # First make a vector of all the CSV files in the "data_chunks" folder
-data_files <- list.files("data_chunks", pattern = "chunk_.*csv", full.names = TRUE) %>%
+data_files <- list.files("data_chunks", pattern = "chunk_.*csv", full.names = FALSE) %>%
   sort()
 
 # Select which data chunks (CSV files) to load and check URLs by 
@@ -136,26 +170,14 @@ data_files <- list.files("data_chunks", pattern = "chunk_.*csv", full.names = TR
 # e.g., 
 # if you want to load the first 10: data_files_to_load <- data_files[1:10]
 # if you want to load all at once: data_files_to_load <- data_files
-data_files_to_load <- data_files[11:12]
+data_files_to_check <- data_files[1:400]
 
-# Load selected chunks, check URLs, write out results
-data_files_to_load %>%
-  # - Load the selected data file chunks
-  map(suppressMessages(read_csv)) %>%
-  set_names(fs::path_file(data_files_to_load)) %>%
-  # - Check the URL for each data chunk, in parallel
-  map(
-    ~mutate(.,
-            dc.publisher.uri.status = future_map_chr(dc.publisher.uri, url_status),
-            dc.relation.uri.status = future_map_chr(dc.relation.uri, url_status)
-    )) %>%
-  # - Write out the results in chunks
-  walk2(., names(.), ~write_csv(.x, glue::glue("results_chunks/{.y}")))
+check_urls(data_files_to_check)
 
 # Combine the results and write out as a single CSV ----
 # This can also be split up into chunks if it takes too much memory
 list.files("results_chunks", pattern = "chunk_.*csv", full.names = TRUE) %>%
-  map(suppressMessages(read_csv)) %>%
+  map(read_csv) %>%
   map(~mutate(., across(everything(), as.character))) %>%
   bind_rows() %>%
   write_csv("results/url_check_results.csv")
