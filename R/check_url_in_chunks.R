@@ -61,13 +61,13 @@ url_status <- function (x, time_limit = 60) {
   # see httr::HEAD()
   # "This method is often used for testing hypertext links for validity, 
   # accessibility, and recent modification"
-  res <- sHEAD(x, timeout(time_limit))
+  res <- sHEAD(x, httr::timeout(time_limit))
   
   # If that returned an error or a non-200 range status (meaning the URL is broken)
   # try GET next
   if (is.null(res$result) || ((httr::status_code(res$result) %/% 200) != 1)) {
     
-    res <- sGET(x, timeout(time_limit))
+    res <- sGET(x, httr::timeout(time_limit))
     
     # If neither HEAD nor GET work, it's hard error
     if (is.null(res$result)) return("no response") # or whatever you want to return on "hard" errors
